@@ -1,0 +1,21 @@
+name: CD Pipeline
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl apply -f k8s/
+
+    - name: Dummy DAST (ZAP Baseline)
+      run: echo "DAST placeholder - OWASP ZAP Baseline Scan"
