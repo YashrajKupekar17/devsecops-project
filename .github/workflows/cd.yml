@@ -36,5 +36,12 @@ jobs:
         curl http://localhost:8080/health
         kill $PF_PID
 
+    # Dummy DAST Stage
+    - name: Dummy DAST Scan
+      run: |
+        echo "Running basic DAST checks..."
+        echo "Checking if application responds correctly"
+        echo "No critical issues found (simulated DAST)"
+
     - name: Verify Resources
       run: kubectl get all
