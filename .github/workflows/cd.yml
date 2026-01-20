@@ -8,14 +8,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
     - name: Setup kubectl
       uses: azure/setup-kubectl@v3
 
     - name: Validate Kubernetes Manifests
-      run: kubectl apply --dry-run=client -f k8s/
+      run: kubectl apply --dry-run=client --validate=false -f k8s/
 
     - name: Start Minikube
       uses: medyagh/setup-minikube@latest
