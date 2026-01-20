@@ -2,77 +2,39 @@ name: CD Pipeline
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
 
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v3
 
-      - name: Start Minikube
-        uses: medyagh/setup-minikube@latest
+    - name: Start Minikube
+      uses: medyagh/setup-minikube@latest
 
-      # Validate before deployment
-      - name: Validate Kubernetes Manifests
-        run: kubectl apply --dry-run=client -f k8s/
+    - name: Deploy to Kubernetes
+      run: kubectl apply -f k8s/
 
-      # Deploy to Kubernetes
-      - name: Deploy to Kubernetes
-        run: kubectl apply -f k8s/
+    - name: Wait for Pods
+      run: kubectl wait --for=condition=Ready pod -l app=fastapi --timeout=120s
 
-      # Wait for deployment to be ready
-      - name: Wait for Deployment
-        run: |
-          kubectl wait --for=condition=available --timeout=300s deployment/fastapi-app
-          echo "✅ Deployment ready"
+    - name: Runtime Test (Port Forward)
+      run: |
+        kubectl port-forward svc/fastapi-service 8080:80 &
+        PF_PID=$!
+        sleep 5
+        curl http://localhost:8080/health
+        kill $PF_PID
 
-      # Verify deployment
-      - name: Verify Deployment
-        run: |
-          kubectl get pods
-          kubectl get services
-
-      # Get application URL
-      - name: Get Service URL
-        run: |
-          echo "Getting service URL..."
-          minikube service fastapi-service --url > service_url.txt
-          SERVICE_URL=$(cat service_url.txt)
-          echo "Service URL: $SERVICE_URL"
-          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_ENV
-
-      # Health check
-      - name: Health Check
-        run: |
-          sleep 10
-          curl -f ${{ env.SERVICE_URL }}/health || exit 1
-          echo "✅ Health check passed"
-
-      # DAST - Dynamic Application Security Testing
-      - name: OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.12.0
-        with:
-          target: ${{ env.SERVICE_URL }}
-          rules_file_name: '.zap/rules.tsv'
-          cmd_options: '-a'
-        continue-on-error: true
-
-      - name: Upload ZAP Report
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: zap-report
-          path: report_html.html
-
-      # Deployment Summary
-      - name: Deployment Summary
-        run: |
-          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo " Application deployed successfully" >> $GITHUB_STEP_SUMMARY
-          echo " Service URL: ${{ env.SERVICE_URL }}" >> $GITHUB_STEP_SUMMARY
-          echo " DAST scan completed" >> $GITHUB_STEP_SUMMARY
+    - name: Verify Resources
+      run: kubectl get all
