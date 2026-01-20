@@ -8,14 +8,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-    - name: Set up kubectl
+    - name: Setup kubectl
       uses: azure/setup-kubectl@v3
 
-    - name: Deploy to Kubernetes
-      run: |
-        kubectl apply -f k8s/
+    - name: Validate Kubernetes Manifests
+      run: kubectl apply --dry-run=client -f k8s/
 
-    - name: Dummy DAST (ZAP Baseline)
-      run: echo "DAST placeholder - OWASP ZAP Baseline Scan"
+    - name: Start Minikube
+      uses: medyagh/setup-minikube@latest
+
+    - name: Deploy to Kubernetes
+      run: kubectl apply -f k8s/
+
+    - name: Verify Deployment
+      run: kubectl get pods

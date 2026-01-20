@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: fastapi
-        image: YOUR_DOCKERHUB_USERNAME/devsecops-fastapi:latest
+        image: yashraj777/devsecops-fastapi:latest
         ports:
         - containerPort: 8000
